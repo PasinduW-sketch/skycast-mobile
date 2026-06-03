@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, ScrollView, StyleSheet, RefreshControl, SafeAreaView } from 'react-native';
-import * as Location from 'expo-location';
+import { View, Text, ScrollView, StyleSheet, RefreshControl, SafeAreaView, Platform } from 'react-native';
 import { fetchWeather } from '../api/weather';
 import { reverseGeocode } from '../api/geocoding';
 import { getWeatherSuggestions, getFunnyError } from '../utils/suggestions';
@@ -8,6 +7,10 @@ import * as Storage from '../storage';
 import type { WeatherData, Unit, Theme } from '../types';
 import WeatherCard from '../components/WeatherCard';
 import HourlyForecast from '../components/HourlyForecast';
+
+// expo-location may not be available in Snack/online environments
+let Location: any = null;
+try { Location = require('expo-location'); } catch {}
 import ForecastCard from '../components/ForecastCard';
 import SuggestionCard from '../components/SuggestionCard';
 import HighlightCard from '../components/HighlightCard';
@@ -75,15 +78,19 @@ export default function HomeScreen({ navigation }: any) {
       setLoading(false);
       return;
     }
-    try {
-      const { status } = await Location.requestForegroundPermissionsAsync();
-      if (status === 'granted') {
-        const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
-        await fetchForLocation(loc.coords.latitude, loc.coords.longitude);
-      } else {
+    if (Location) {
+      try {
+        const { status } = await Location.requestForegroundPermissionsAsync();
+        if (status === 'granted') {
+          const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
+          await fetchForLocation(loc.coords.latitude, loc.coords.longitude);
+        } else {
+          await fetchForCity('Colombo');
+        }
+      } catch {
         await fetchForCity('Colombo');
       }
-    } catch {
+    } else {
       await fetchForCity('Colombo');
     }
     setLoading(false);
